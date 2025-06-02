@@ -1,0 +1,28 @@
+{
+  "name": "nova-deployer",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": "./index.js",
+  "scripts": {
+    "start": "node index.js",
+    "build": "pkg . --target node18-linux-x64 --output nova-deployer-linux",
+    "build-win": "pkg . --target node18-win-x64 --output nova-deployer-win.exe --icon novabid.ico",
+    "build-mac": "pkg . --target node18-macos-x64 --output nova-deployer-mac --icon novabid.icns",
+    "build-all": "pkg . --targets node18-win-x64,node18-macos-x64,node18-linux-x64"
+  },
+  "pkg": {
+    "assets": [
+      "node_modules/**/*"
+    ],
+    "targets": [
+      "node18-linux-x64"
+    ]
+  },
+  "dependencies": {
+    "axios": "^0.28.0",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.5.0",
+    "figures": "^3.2.0",
+    "uuid": "^9.0.1"
+  }
+}

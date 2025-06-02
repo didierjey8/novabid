@@ -1,0 +1,97 @@
+deploy-to-server:
+  stage: deploy
+  image:
+    alpine:latest
+    #resource_group: ${CI_PROJECT_NAME}_deployment_queue
+
+  variables:
+    SECURE_FILES_DOWNLOAD_PATH: ".secure_files"
+    ENDPOINT_ID: "3"
+
+  before_script:
+    - echo "⏱️ Iniciando configuración previa..."
+    - apk add --no-cache bash curl openssh jq git docker-cli rsync
+    - curl -s https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/download-secure-files/-/raw/main/installer | bash
+    - mkdir -p ~/.ssh
+    - cp .secure_files/id_ed25519 ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - |
+      if [ "$CI_COMMIT_REF_NAME" = "main" ]; then
+        export SERVER_HOST=$SERVER_HOST_PROD
+        export SERVER_USER=$SERVER_USER_PROD
+      fi
+    - |
+      cat > ~/.ssh/config <<EOF
+      Host gitlab.com
+        IdentityFile ~/.ssh/id_ed25519
+        StrictHostKeyChecking no
+
+      Host server
+        HostName $SERVER_HOST
+        User $SERVER_USER
+        IdentityFile ~/.ssh/id_ed25519
+        StrictHostKeyChecking no
+      EOF
+    - echo "✅ Configuración previa completada"
+
+  script:
+    - |
+      echo "🚀 Lanzando $CI_PROJECT_NAME en $CI_COMMIT_REF_NAME"
+
+      if [ "$CI_COMMIT_REF_NAME" = "main" ]; then
+        IMAGE_NAME="${CI_PROJECT_NAME}"
+        STACK_NAME="${CI_PROJECT_NAME}"
+        DEPLOY_DIR="/var/www/html/prod/${CI_PROJECT_NAME}"
+        ENV_FILE=".env.prod"
+      elif [ "$CI_COMMIT_REF_NAME" = "staging" ]; then
+        IMAGE_NAME="${CI_PROJECT_NAME}-staging"
+        STACK_NAME="${CI_PROJECT_NAME}-staging"
+        DEPLOY_DIR="/var/www/html/staging/${CI_PROJECT_NAME}"
+        ENV_FILE=".env.staging"
+      else
+        IMAGE_NAME="${CI_PROJECT_NAME}-dev"
+        STACK_NAME="${CI_PROJECT_NAME}-dev"
+        DEPLOY_DIR="/var/www/html/dev/${CI_PROJECT_NAME}"
+        ENV_FILE=".env.dev"
+      fi
+
+      echo "📦 Imagen $IMAGE_NAME"
+      echo "📁 Carpeta $DEPLOY_DIR"
+      echo "📛 Stack $STACK_NAME"
+      echo "📄 Archivo de entorno $ENV_FILE"
+
+      ssh server "mkdir -p $DEPLOY_DIR"
+      rsync -az --delete ./ server:$DEPLOY_DIR/
+      echo "🏗️ Construyendo Docker en servidor..."
+
+      ssh server "
+        cd $DEPLOY_DIR && \
+        export \$(cat $ENV_FILE | xargs) && \
+        docker build --no-cache \
+          --build-arg VITE_API_URL=\$VITE_API_URL \
+          --build-arg VITE_PUBLIC_KEY=\$VITE_PUBLIC_KEY \
+          --build-arg VITE_ENVIRONMENT=\$VITE_ENVIRONMENT \
+          --build-arg VITE_FEATURE_CHAT=\$VITE_FEATURE_CHAT \
+          -t ${IMAGE_NAME}:latest .
+      "
+
+      echo "✅ Imagen construida $IMAGE_NAME"
+      ssh server "rm -rf $DEPLOY_DIR"
+      ssh server "docker image prune -f || echo '⚠️ Ya hay un prune en ejecución, se omite'"
+      echo "✅ Limpieza completada"
+
+      echo "🌐 Desplegando stack..."
+      PAYLOAD="{\"projectName\":\"$STACK_NAME\"}"
+      RESPONSE=$(curl -s -X POST "${SOLDEPLOY_HOST}stacks" \
+        -H "Content-Type: application/json" \
+        --data "$PAYLOAD")
+      echo "📣 Respuesta $RESPONSE"
+      if echo "$RESPONSE" | grep -q "error"; then
+        echo "❌ Falló el despliegue"
+        exit 1
+      fi
+
+  only:
+    - dev
+    - staging
+    - main

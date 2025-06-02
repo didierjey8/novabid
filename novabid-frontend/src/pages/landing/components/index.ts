@@ -1,0 +1,9 @@
+export { default as Header } from "./Header";
+export { default as Hero } from "./Hero";
+export { default as PrivacyRedefined } from "./PrivacyRedefined";
+export { default as Dashboard } from "./Dashboard";
+export { default as Features } from "./Features";
+export { default as HowItWorks } from "./HowItWorks";
+export { default as PrivacyPlatform } from "./PrivacyPlatform";
+export { default as Footer } from "./Footer";
+export { default as BackgroundEffects } from "./BackgroundEffects";
