@@ -3,7 +3,7 @@
 ## **Demo**
 
 - 🔗 **Live Demo**: [https://novabid.app](https://novabid.app)
-- 🎥 **Video Presentation**: [https://www.conexionssee.com/novabid/presentation.mp4](https://www.conexionssee.com/novabid/presentation.mp4)
+- 🎥 **Video Presentation**: [https://s3.us-east-1.wasabisys.com/andiamo/novabidpresentation.mp4](https://s3.us-east-1.wasabisys.com/andiamo/novabidpresentation.mp4)
 
 ---
 
